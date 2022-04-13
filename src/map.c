@@ -52,12 +52,8 @@ const char * const map_type_name[] = {
 	[BPF_MAP_TYPE_CGROUP_ARRAY]		= "cgroup_array",
 #endif
 	[BPF_MAP_TYPE_LRU_HASH]			= "lru_hash",
-#ifdef BPF_MAP_TYPE_LRU_PERCPU_HASH
 	[BPF_MAP_TYPE_LRU_PERCPU_HASH]		= "lru_percpu_hash",
-#endif
-#ifdef BPF_MAP_TYPE_LPM_TRIE
 	[BPF_MAP_TYPE_LPM_TRIE]			= "lpm_trie",
-#endif
 	[BPF_MAP_TYPE_ARRAY_OF_MAPS]		= "array_of_maps",
 	[BPF_MAP_TYPE_HASH_OF_MAPS]		= "hash_of_maps",
 #ifdef BPF_MAP_TYPE_DEVMAP
@@ -87,21 +83,15 @@ const char * const map_type_name[] = {
 #ifdef BPF_MAP_TYPE_PERCPU_CGROUP_STORAGE
 	[BPF_MAP_TYPE_PERCPU_CGROUP_STORAGE]	= "percpu_cgroup_storage",
 #endif
-#ifdef BPF_MAP_TYPE_QUEUE
 	[BPF_MAP_TYPE_QUEUE]			= "queue",
-#endif
-#ifdef BPF_MAP_TYPE_STACK
 	[BPF_MAP_TYPE_STACK]			= "stack",
-#endif
 #ifdef BPF_MAP_TYPE_SK_STORAGE
 	[BPF_MAP_TYPE_SK_STORAGE]		= "sk_storage",
 #endif
 #ifdef BPF_MAP_TYPE_STRUCT_OPS
 	[BPF_MAP_TYPE_STRUCT_OPS]		= "struct_ops",
 #endif
-#ifdef BPF_MAP_TYPE_RINGBUF
 	[BPF_MAP_TYPE_RINGBUF]			= "ringbuf",
-#endif
 #ifdef BPF_MAP_TYPE_INODE_STORAGE
 	[BPF_MAP_TYPE_INODE_STORAGE]		= "inode_storage",
 #endif
@@ -121,9 +111,7 @@ static bool map_is_per_cpu(__u32 type)
 {
 	return type == BPF_MAP_TYPE_PERCPU_HASH ||
 	       type == BPF_MAP_TYPE_PERCPU_ARRAY
-#ifdef BPF_MAP_TYPE_LRU_PERCPU_HASH
 	    || type == BPF_MAP_TYPE_LRU_PERCPU_HASH
-#endif
 #ifdef BPF_MAP_TYPE_PERCPU_CGROUP_STORAGE
 		|| type == BPF_MAP_TYPE_PERCPU_CGROUP_STORAGE
 #endif
@@ -886,6 +874,7 @@ static int dump_map_elem(int fd, void *key, void *value,
 
 static int maps_have_btf(int *fds, int nb_fds)
 {
+#ifdef HAVE_BTF_SUPPORT
 	struct bpf_map_info info = {0};
 	__u32 len = sizeof(info);
 	int err, i;
@@ -897,13 +886,15 @@ static int maps_have_btf(int *fds, int nb_fds)
 			return -1;
 		}
 
-#ifdef HAVE_BTF_SUPPORT
+
 		if (!info.btf_id)
 			return 0;
-#endif
 	}
 
 	return 1;
+#else
+    return 0;
+#endif
 }
 
 #ifdef HAVE_BTF_SUPPORT
@@ -1499,7 +1490,6 @@ exit:
 	return err;
 }
 
-#ifdef HAVE_DEQUEUE_SUPPORT
 static int do_pop_dequeue(int argc, char **argv)
 {
 	struct bpf_map_info info = {0};
@@ -1542,7 +1532,6 @@ exit_free:
 
 	return err;
 }
-#endif
 
 #ifdef HAVE_FREEZE_SUPPORT
 static int do_freeze(int argc, char **argv)
@@ -1598,13 +1587,9 @@ static int do_help(int argc, char **argv)
 #endif
 		"       %1$s %2$s peek       MAP\n"
 		"       %1$s %2$s push       MAP value VALUE\n"
-#ifdef HAVE_DEQUEUE_SUPPORT
 		"       %1$s %2$s pop        MAP\n"
-#endif
 		"       %1$s %2$s enqueue    MAP value VALUE\n"
-#ifdef HAVE_DEQUEUE_SUPPORT
 		"       %1$s %2$s dequeue    MAP\n"
-#endif
 #ifdef HAVE_FREEZE_SUPPORT
 		"       %1$s %2$s freeze     MAP\n"
 #endif
@@ -1629,18 +1614,21 @@ static int do_help(int argc, char **argv)
 #endif
 		" | lru_hash |\n"
 		"                 lru_percpu_hash | lpm_trie | array_of_maps | hash_of_maps |\n"
+#ifdef __linux__
 		"                 devmap | devmap_hash | sockmap | cpumap | xskmap | sockhash |\n"
-		"                 cgroup_storage"
-#ifdef BPF_MAP_TYPE_REUSEPORT_SOCKARRAY
-		" | reuseport_sockarray"
+		"                 cgroup_storage | reuseport_sockarray | percpu_cgroup_storage |\n"
 #endif
-		" | percpu_cgroup_storage |\n"
 		"                 queue | stack"
-#ifdef BPF_MAP_TYPE_SK_STORAGE
+#ifdef __linux__
 		" | sk_storage"
+		" | struct_ops"
 #endif
-		" | struct_ops | ringbuf | inode_storage |\n"
-		"                 task_storage | bloom_filter }\n"
+		" | ringbuf"
+#ifdef __linux__
+		" | inode_storage |\n"
+		"                 task_storage | bloom_filter"
+#endif
+		" }\n"
 		"       " HELP_SPEC_OPTIONS " |\n"
 #ifdef HAVE_BPFFS_SUPPORT
 		"                    {-f|--bpffs} | {-n|--nomount} }\n"
@@ -1668,10 +1656,8 @@ static const struct cmd cmds[] = {
 	{ "peek",	do_lookup },
 	{ "push",	do_update },
 	{ "enqueue",	do_update },
-#ifdef HAVE_DEQUEUE_SUPPORT
 	{ "pop",	do_pop_dequeue },
 	{ "dequeue",	do_pop_dequeue },
-#endif
 #ifdef HAVE_FREEZE_SUPPORT
 	{ "freeze",	do_freeze },
 #endif
