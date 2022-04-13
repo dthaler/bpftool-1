@@ -39,8 +39,11 @@
 #endif
 #include <bpf/hashmap.h>
 #include <bpf/libbpf.h>
-#include <bpf/libbpf_internal.h>
+#ifdef WIN32
+#include "../libbpf/src/libbpf_internal.h"
+#endif
 #ifdef __linux__
+#include <bpf/libbpf_internal.h>
 #include <bpf/skel_internal.h>
 #endif
 #ifdef _MSC_VER
@@ -59,97 +62,46 @@
 #define BPF_METADATA_PREFIX_LEN (sizeof(BPF_METADATA_PREFIX) - 1)
 
 const char * const prog_type_name[] = {
+#ifdef __linux__
 	[BPF_PROG_TYPE_UNSPEC]			= "unspec",
-#ifdef BPF_PROG_TYPE_SOCKET_FILTER
 	[BPF_PROG_TYPE_SOCKET_FILTER]		= "socket_filter",
-#endif
-#ifdef BPF_PROG_TYPE_KPROBE
 	[BPF_PROG_TYPE_KPROBE]			= "kprobe",
-#endif
-#ifdef BPF_PROG_TYPE_SCHED_CLS
 	[BPF_PROG_TYPE_SCHED_CLS]		= "sched_cls",
-#endif
-#ifdef BPF_PROG_TYPE_SCHED_ACT
 	[BPF_PROG_TYPE_SCHED_ACT]		= "sched_act",
-#endif
-#ifdef BPF_PROG_TYPE_TRACEPOINT
 	[BPF_PROG_TYPE_TRACEPOINT]		= "tracepoint",
 #endif
 	[BPF_PROG_TYPE_XDP]			= "xdp",
-#ifdef BPF_PROG_TYPE_PERF_EVENT
+#ifdef __linux__
 	[BPF_PROG_TYPE_PERF_EVENT]		= "perf_event",
-#endif
-#ifdef BPF_PROG_TYPE_CGROUP_SKB
 	[BPF_PROG_TYPE_CGROUP_SKB]		= "cgroup_skb",
-#endif
-#ifdef BPF_PROG_TYPE_CGROUP_SOCK
 	[BPF_PROG_TYPE_CGROUP_SOCK]		= "cgroup_sock",
-#endif
-#ifdef BPF_PROG_TYPE_LWT_IN
 	[BPF_PROG_TYPE_LWT_IN]			= "lwt_in",
-#endif
-#ifdef BPF_PROG_TYPE_LWT_OUT
 	[BPF_PROG_TYPE_LWT_OUT]			= "lwt_out",
-#endif
-#ifdef BPF_PROG_TYPE_LWT_XMIT
 	[BPF_PROG_TYPE_LWT_XMIT]		= "lwt_xmit",
-#endif
-#ifdef BPF_PROG_TYPE_SOCK_OPS
 	[BPF_PROG_TYPE_SOCK_OPS]		= "sock_ops",
-#endif
-#ifdef BPF_PROG_TYPE_SK_SKB
 	[BPF_PROG_TYPE_SK_SKB]			= "sk_skb",
-#endif
-#ifdef BPF_PROG_TYPE_CGROUP_DEVICE
 	[BPF_PROG_TYPE_CGROUP_DEVICE]		= "cgroup_device",
-#endif
-#ifdef BPF_PROG_TYPE_SK_MSG
 	[BPF_PROG_TYPE_SK_MSG]			= "sk_msg",
-#endif
-#ifdef BPF_PROG_TYPE_RAW_TRACEPOINT
 	[BPF_PROG_TYPE_RAW_TRACEPOINT]		= "raw_tracepoint",
 #endif
-#ifdef BPF_PROG_TYPE_CGROUP_SOCK_ADDR
 	[BPF_PROG_TYPE_CGROUP_SOCK_ADDR]	= "cgroup_sock_addr",
-#endif
-#ifdef BPF_PROG_TYPE_LWT_SEG6LOCAL
+#ifdef __linux__
 	[BPF_PROG_TYPE_LWT_SEG6LOCAL]		= "lwt_seg6local",
-#endif
-#ifdef BPF_PROG_TYPE_LIRC_MODE2
 	[BPF_PROG_TYPE_LIRC_MODE2]		= "lirc_mode2",
-#endif
-#ifdef BPF_PROG_TYPE_SK_REUSEPORT
 	[BPF_PROG_TYPE_SK_REUSEPORT]		= "sk_reuseport",
-#endif
-#ifdef BPF_PROG_TYPE_FLOW_DISSECTOR
 	[BPF_PROG_TYPE_FLOW_DISSECTOR]		= "flow_dissector",
-#endif
-#ifdef BPF_PROG_TYPE_CGROUP_SYSCTL
 	[BPF_PROG_TYPE_CGROUP_SYSCTL]		= "cgroup_sysctl",
-#endif
-#ifdef BPF_PROG_TYPE_RAW_TRACEPOINT_WRITABLE
 	[BPF_PROG_TYPE_RAW_TRACEPOINT_WRITABLE]	= "raw_tracepoint_writable",
-#endif
-#ifdef BPF_PROG_TYPE_CGROUP_SOCKOPT
 	[BPF_PROG_TYPE_CGROUP_SOCKOPT]		= "cgroup_sockopt",
-#endif
-#ifdef BPF_PROG_TYPE_TRACING
 	[BPF_PROG_TYPE_TRACING]			= "tracing",
-#endif
-#ifdef BPF_PROG_TYPE_STRUCT_OPS
 	[BPF_PROG_TYPE_STRUCT_OPS]		= "struct_ops",
-#endif
-#ifdef BPF_PROG_TYPE_EXT
 	[BPF_PROG_TYPE_EXT]			= "ext",
-#endif
-#ifdef BPF_PROG_TYPE_LSM
 	[BPF_PROG_TYPE_LSM]			= "lsm",
-#endif
-#ifdef BPF_PROG_TYPE_SK_LOOKUP
 	[BPF_PROG_TYPE_SK_LOOKUP]		= "sk_lookup",
-#endif
-#ifdef BPF_PROG_TYPE_SYSCALL
 	[BPF_PROG_TYPE_SYSCALL]			= "syscall",
+#endif
+#ifdef _WIN32
+    [BPF_PROG_TYPE_BIND] = "bind",
 #endif
 };
 
@@ -543,12 +495,10 @@ static void print_prog_header_json(struct bpf_prog_info *info, int fd)
 	else
 		jsonw_uint_field(json_wtr, "type", info->type);
 
-#ifdef __linux__
 	if (*info->name) {
 		get_prog_full_name(info, fd, prog_name, sizeof(prog_name));
 		jsonw_string_field(json_wtr, "name", prog_name);
 	}
-#endif
 
 #ifdef BPF_TAG_SIZE
 	jsonw_name(json_wtr, "tag");
@@ -651,12 +601,10 @@ static void print_prog_header_plain(struct bpf_prog_info *info, int fd)
 	else
 		printf("type %u  ", info->type);
 
-#ifdef __linux__
 	if (*info->name) {
 		get_prog_full_name(info, fd, prog_name, sizeof(prog_name));
 		printf("name %s  ", prog_name);
 	}
-#endif
 
 #ifdef BPF_TAG_SIZE
 	printf("tag ");
