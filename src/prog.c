@@ -1345,7 +1345,6 @@ static int alloc_run_data(void **data_ptr, unsigned int size_out)
 	return 0;
 }
 
-#ifdef __linux__
 static int do_run(int argc, char **argv)
 {
 	char *data_fname_in = NULL, *data_fname_out = NULL;
@@ -1523,7 +1522,6 @@ free_data_in:
 
 	return err;
 }
-#endif // __linux__
 
 static int
 get_prog_type_by_name(const char *name, enum bpf_prog_type *prog_type,
@@ -2542,7 +2540,9 @@ static const struct cmd cmds[] = {
 	{ "attach",	do_attach },
 	{ "detach",	do_detach },
 	{ "tracelog",	do_tracelog },
+#endif
 	{ "run",	do_run },
+#ifdef __linux__
 	{ "profile",	do_profile },
 #endif
 	{ 0 }
